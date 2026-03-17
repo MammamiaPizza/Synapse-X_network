@@ -1,0 +1,6 @@
+# S-XAN Network — Python Standard Library Only
+# Python >= 3.10 required
+#
+# No external dependencies needed.
+# All modules use stdlib: struct, hashlib, zlib, time,
+# statistics, random, dataclasses, enum, collections, typing
