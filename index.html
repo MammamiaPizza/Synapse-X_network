@@ -629,7 +629,7 @@
     <div class="prog-wrap">
       <div class="prog-label">
         <span>Progress</span>
-        <span id="step-lbl">0 / 10</span>
+        <span id="step-lbl">0 / 1000</span>
       </div>
       <div class="prog-track"><div class="prog-fill" id="prog"></div></div>
     </div>
@@ -710,8 +710,8 @@
     for (let i = 0; i < 1000; i++) {
       sent++;
       updateMetrics();
-      document.getElementById('prog').style.width = (i / 10 * 100) + '%';
-      document.getElementById('step-lbl').textContent = (i + 1) + ' / 10';
+      document.getElementById('prog').style.width = (i /10) + '%';
+      document.getElementById('step-lbl').textContent = (i + 1) + ' / 1000';
 
       const intensity = Math.max(0.05, Math.min(1, 0.85 + (Math.random() * 2 - 1) * NOISE));
 
@@ -771,7 +771,7 @@
     }
 
     document.getElementById('prog').style.width = '100%';
-    document.getElementById('step-lbl').textContent = '10 / 10';
+    document.getElementById('step-lbl').textContent = '10 / 1000';
     const rel = (recv / sent * 100).toFixed(2);
     addLog('SYSTEM', `Simulation complete · Reliability: ${rel}% · Loss rate: ${(100 - parseFloat(rel)).toFixed(2)}%`, 'tag-system');
     running = false;
