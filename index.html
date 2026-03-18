@@ -1,0 +1,813 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S-XAN Bridge · Neural Interface System v2.1</title>
+  <script type="text/javascript" nonce="0de42fb4693e48e5ab08f1421a3" src="//local.adguard.org?ts=1773749367788&amp;type=content-script&amp;dmn=synapse-x-newnetwork.web.app&amp;url=https%3A%2F%2Fsynapse-x-newnetwork.web.app%2F&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="0de42fb4693e48e5ab08f1421a3" src="//local.adguard.org?ts=1773749367788&amp;name=AdGuard%20Extra&amp;name=AdGuard%20Popup%20Blocker&amp;type=user-script"></script><link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f2f4f8;
+      --surface: #ffffff;
+      --surface-2: #f8f9fb;
+      --border: #e2e7ef;
+      --border-strong: #c8d0de;
+      --text-primary: #0f1a2b;
+      --text-secondary: #5a6b80;
+      --text-muted: #9aaabb;
+      --blue: #2b72ff;
+      --blue-light: #eef3ff;
+      --green: #00b87a;
+      --green-light: #e6faf4;
+      --purple: #7c3aed;
+      --purple-light: #f3eeff;
+      --amber: #d97706;
+      --amber-light: #fef9ec;
+      --red: #e03030;
+      --red-light: #fff0f0;
+      --navy: #0f1a2b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --shadow-sm: 0 1px 3px rgba(15,26,43,0.07), 0 1px 2px rgba(15,26,43,0.04);
+      --shadow-md: 0 4px 12px rgba(15,26,43,0.08), 0 2px 4px rgba(15,26,43,0.04);
+      --shadow-lg: 0 8px 32px rgba(15,26,43,0.10), 0 2px 8px rgba(15,26,43,0.05);
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 48px;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-wrap { display: flex; align-items: center; gap: 14px; }
+
+    .logo-mark {
+      width: 44px; height: 44px;
+      background: var(--navy);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-mark::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(43,114,255,0.3) 0%, transparent 60%);
+    }
+
+    .logo-mark svg { width: 22px; height: 22px; position: relative; z-index: 1; }
+
+    .logo-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.2px;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 5px 13px;
+      border-radius: 20px;
+    }
+
+    .chip-auth { background: var(--green-light); border: 1px solid #b2e8d8; color: var(--green); }
+    .chip-live { background: var(--red-light); border: 1px solid #f5c0c0; color: var(--red); }
+
+    .live-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--red);
+      animation: blink 1s ease-in-out infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* ── SECTION HEADER ── */
+    .section-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── NODE GRID ── */
+    .node-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s;
+    }
+
+    .card:hover { box-shadow: var(--shadow-md); }
+
+    .card-top-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .card.card-bridge { border-color: var(--border-strong); }
+
+    .card-eyebrow {
+      font-size: 9px;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      margin-top: 8px;
+    }
+
+    .card-node-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border-strong);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .status-dot.active { background: var(--green); animation: blink 1.3s ease-in-out infinite; }
+    .status-dot.warn { background: var(--amber); animation: blink 1s ease-in-out infinite; }
+    .status-dot.error { background: var(--red); }
+    .status-dot.purple { background: var(--purple); animation: blink 1.4s ease-in-out infinite; }
+
+    .status-txt {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* wave */
+    .wave-svg { width: 100%; height: 46px; display: block; }
+
+    /* intensity bar */
+    .bar-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-family: 'Space Grotesk', sans-serif;
+      margin-top: 8px; margin-bottom: 4px;
+    }
+
+    .bar-track {
+      height: 5px; background: var(--bg);
+      border-radius: 3px; overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    }
+
+    .bar-blue { background: linear-gradient(90deg, var(--blue), #60a5fa); }
+    .bar-purple { background: linear-gradient(90deg, var(--purple), #a78bfa); }
+
+    /* bridge rows */
+    .bridge-table { width: 100%; margin-top: 4px; border-collapse: collapse; }
+
+    .bridge-table tr + tr td { border-top: 1px solid var(--border); }
+
+    .bridge-table td {
+      padding: 8px 0;
+      font-size: 11px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .bridge-table td:first-child { color: var(--text-muted); }
+    .bridge-table td:last-child { text-align: right; color: var(--text-primary); font-weight: 500; }
+
+    .val-green { color: var(--green) !important; }
+    .val-red { color: var(--red) !important; }
+
+    /* arm display */
+    .arm-big {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 40px;
+      font-weight: 300;
+      color: var(--text-primary);
+      line-height: 1;
+      margin: 8px 0 2px;
+      letter-spacing: -1px;
+    }
+
+    .arm-unit { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+
+    .arc-svg { width: 100%; height: 200px; margin-top: 14px; }
+
+    /* ── LOG ── */
+    .log-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .log-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .log-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .log-badge {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      background: var(--bg);
+      color: var(--text-secondary);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .log-body {
+      height: 164px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .log-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--surface-2);
+    }
+
+    .log-ts {
+      font-size: 10px;
+      color: var(--text-muted);
+      min-width: 64px;
+      font-family: 'Space Grotesk', sans-serif;
+      padding-top: 2px;
+    }
+
+    .log-tag {
+      font-size: 9px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      min-width: 56px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .tag-brain { background: var(--blue-light); color: var(--blue); }
+    .tag-net { background: var(--amber-light); color: var(--amber); }
+    .tag-bridge { background: var(--green-light); color: var(--green); }
+    .tag-arm { background: var(--purple-light); color: var(--purple); }
+    .tag-system { background: var(--bg); color: var(--text-secondary); }
+    .tag-alert { background: var(--red-light); color: var(--red); }
+
+    .log-msg {
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex: 1;
+      line-height: 1.6;
+    }
+
+    /* ── METRICS ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .metric-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-tile::before {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .metric-tile.t-blue::before { background: var(--blue); }
+    .metric-tile.t-green::before { background: var(--green); }
+    .metric-tile.t-red::before { background: var(--red); }
+    .metric-tile.t-purple::before { background: var(--purple); }
+
+    .metric-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 30px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 6px;
+      transition: color 0.3s;
+    }
+
+    .metric-num.green { color: var(--green); }
+    .metric-num.red { color: var(--red); }
+    .metric-num.amber { color: var(--amber); }
+
+    .metric-lbl {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── CONTROLS ── */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(15,26,43,0.2);
+    }
+
+    .btn-primary:hover { background: #1e3a5f; box-shadow: 0 4px 16px rgba(15,26,43,0.3); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { background: #c5cdd9; box-shadow: none; cursor: not-allowed; }
+
+    .btn-ghost {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .btn-ghost:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg); }
+
+    .prog-wrap { flex: 1; }
+
+    .prog-label {
+      display: flex; justify-content: space-between;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .prog-track {
+      height: 5px;
+      background: var(--bg);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .prog-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--navy), var(--blue));
+      width: 0%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      padding-top: 32px;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 760px) {
+      .node-grid { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      .topbar { flex-wrap: wrap; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo-wrap">
+      <div class="logo-mark">
+        <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11 3v16M3 11h16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="11" cy="11" r="4" stroke="white" stroke-width="1.5"/>
+          <circle cx="11" cy="11" r="1.5" fill="white"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-title">S-XAN Bridge</div>
+        <div class="logo-sub">Neural Interface System · v2.1</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="chip chip-auth">
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M4 1L6.5 2.5V5.5L4 7L1.5 5.5V2.5L4 1Z" stroke="currentColor" stroke-width="1"/></svg>
+        AUTH: BIO-SYNC-GROUP18
+      </span>
+      <span class="chip chip-live"><div class="live-dot"></div>Monitor</span>
+    </div>
+  </header>
+
+  <!-- NODES -->
+  <div class="section-label">Neural Nodes</div>
+  <div class="node-grid">
+
+    <!-- Brain -->
+    <div class="card">
+      <div class="card-top-bar" style="background:linear-gradient(90deg,#2b72ff,#60a5fa);"></div>
+      <div class="card-eyebrow">Source Node</div>
+      <div class="card-node-name">BRAIN_CORE</div>
+      <div class="status-row">
+        <div class="status-dot" id="brain-dot"></div>
+        <span class="status-txt" id="brain-status">Standby</span>
+      </div>
+      <svg class="wave-svg" id="brain-wave" viewBox="0 0 220 46" preserveAspectRatio="none"></svg>
+      <div class="bar-label">Neural Intensity</div>
+      <div class="bar-track"><div class="bar-fill bar-blue" id="brain-bar" style="width:0%"></div></div>
+    </div>
+
+    <!-- Bridge -->
+    <div class="card card-bridge">
+      <div class="card-top-bar" style="background:var(--navy);"></div>
+      <div class="card-eyebrow">Processing Unit</div>
+      <div class="card-node-name">S-XAN Bridge</div>
+      <div class="status-row">
+        <div class="status-dot warn" id="bridge-dot"></div>
+        <span class="status-txt" id="bridge-status">Idle</span>
+      </div>
+      <table class="bridge-table">
+        <tr>
+          <td>Noise Filter</td>
+          <td id="filter-val">—</td>
+        </tr>
+        <tr>
+          <td>Transform</td>
+          <td id="transform-val">—</td>
+        </tr>
+        <tr>
+          <td>Checksum</td>
+          <td class="val-green" id="checksum-val">Pending</td>
+        </tr>
+        <tr>
+          <td>Auth Token</td>
+          <td class="val-green">BIO-SYNC-GROUP18</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Arm -->
+    <div class="card">
+      <div class="card-top-bar" style="background:linear-gradient(90deg,#7c3aed,#a78bfa);"></div>
+      <div class="card-eyebrow">Target Node</div>
+      <div class="card-node-name">ARM_V1</div>
+      <div class="status-row">
+        <div class="status-dot error" id="arm-dot"></div>
+        <span class="status-txt" id="arm-status">Waiting signal</span>
+      </div>
+      <div class="arm-big" id="motor-deg">—°</div>
+      <div class="arm-unit">Motor Command</div>
+      <svg class="arc-svg" id="arc-svg" viewBox="0 0 200 44">
+        <path d="M10 40 A 90 90 0 0 1 190 40" fill="none" stroke="#f0f2f5" stroke-width="6" stroke-linecap="round"/>
+        <path d="M10 40 A 90 90 0 0 1 190 40" fill="none" stroke="#7c3aed" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="283" stroke-dashoffset="283" id="arm-arc" style="transition:stroke-dashoffset 0.5s cubic-bezier(.4,0,.2,1);"/>
+        <circle cx="10" cy="40" r="4" fill="#7c3aed" opacity="0.4"/>
+        <circle cx="190" cy="40" r="4" fill="#7c3aed" opacity="0.15"/>
+      </svg>
+      <div class="bar-label">Execution Level</div>
+      <div class="bar-track"><div class="bar-fill bar-purple" id="arm-bar" style="width:0%"></div></div>
+    </div>
+
+  </div>
+
+  <!-- LOG -->
+  <div class="log-card">
+    <div class="log-header">
+      <div class="log-title">Event Log</div>
+      <div class="log-badge" id="log-badge">0 events</div>
+    </div>
+    <div class="log-body" id="log"></div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="section-label">Session Metrics</div>
+  <div class="metrics-grid">
+    <div class="metric-tile t-blue">
+      <div class="metric-num" id="m-sent">0</div>
+      <div class="metric-lbl">Packets Sent</div>
+    </div>
+    <div class="metric-tile t-green">
+      <div class="metric-num green" id="m-recv">0</div>
+      <div class="metric-lbl">Executed</div>
+    </div>
+    <div class="metric-tile t-red">
+      <div class="metric-num red" id="m-lost">0</div>
+      <div class="metric-lbl">Packet Loss</div>
+    </div>
+    <div class="metric-tile t-purple">
+      <div class="metric-num" id="m-rel">—</div>
+      <div class="metric-lbl">Reliability</div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls-bar">
+    <button class="btn-primary" id="btn-run" onclick="startSim()">▶ Run Simulation</button>
+    <button class="btn-ghost" onclick="resetSim()">Reset</button>
+    <div class="prog-wrap">
+      <div class="prog-label">
+        <span>Progress</span>
+        <span id="step-lbl">0 / 10</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="prog"></div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    S-XAN BIDIRECTIONAL NEURAL BRIDGE · BIOMEDICAL RESEARCH PROTOTYPE · GROUP 18
+  </div>
+
+</div>
+
+<script>
+  const AUTH_TOKEN = "BIO-SYNC-GROUP18";
+  const PACKET_LOSS = 0.01;
+  const NOISE = 0.2;
+  let running = false;
+  let sent = 0, recv = 0, lost = 0, logCount = 0;
+
+  function ts() {
+    return new Date().toTimeString().slice(0, 8);
+  }
+
+  function addLog(src, msg, tagCls) {
+    logCount++;
+    const el = document.getElementById('log');
+    const div = document.createElement('div');
+    div.className = 'log-row';
+    div.innerHTML = `<span class="log-ts">${ts()}</span><span class="log-tag ${tagCls}">${src}</span><span class="log-msg">${msg}</span>`;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+    document.getElementById('log-badge').textContent = logCount + ' events';
+  }
+
+  function updateMetrics() {
+    document.getElementById('m-sent').textContent = sent;
+    document.getElementById('m-recv').textContent = recv;
+    document.getElementById('m-lost').textContent = lost;
+    if (sent > 0) {
+      const r = (recv / sent * 100).toFixed(1);
+      const el = document.getElementById('m-rel');
+      el.textContent = r + '%';
+      el.className = 'metric-num' + (parseFloat(r) >= 85 ? ' green' : parseFloat(r) >= 70 ? ' amber' : ' red');
+    }
+  }
+
+  function drawWave(intensity) {
+    const svg = document.getElementById('brain-wave');
+    const t = Date.now() * 0.004;
+    const pts = [];
+    for (let x = 0; x <= 220; x += 4) {
+      const y = 23 - intensity * 15 * (
+        Math.sin((x / 220) * Math.PI * 5 + t) * 0.65 +
+        Math.sin((x / 220) * Math.PI * 10 + t * 1.4) * 0.35
+      ) * (0.85 + Math.random() * 0.15);
+      pts.push(`${x},${Math.max(3, Math.min(43, y.toFixed(1)))}`);
+    }
+    svg.innerHTML = `<polyline points="${pts.join(' ')}" fill="none" stroke="#2b72ff" stroke-width="1.5" stroke-linejoin="round" opacity="0.85"/>`;
+    document.getElementById('brain-bar').style.width = (intensity * 100).toFixed(0) + '%';
+  }
+
+  function setArm(deg) {
+    document.getElementById('motor-deg').textContent = deg + '°';
+    const pct = deg / 180;
+    document.getElementById('arm-arc').setAttribute('stroke-dashoffset', (283 - 283 * pct).toFixed(1));
+    document.getElementById('arm-bar').style.width = (pct * 100) + '%';
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function startSim() {
+    if (running) return;
+    running = true;
+    document.getElementById('btn-run').disabled = true;
+    sent = 0; recv = 0; lost = 0;
+    addLog('SYSTEM', 'S-XAN simulation initialized. Auth token verified.', 'tag-system');
+    addLog('SYSTEM', 'Parameters: noise=0.20 · packet_loss=20% · steps=10', 'tag-system');
+
+    for (let i = 0; i < 1000; i++) {
+      sent++;
+      updateMetrics();
+      document.getElementById('prog').style.width = (i / 10 * 100) + '%';
+      document.getElementById('step-lbl').textContent = (i + 1) + ' / 10';
+
+      const intensity = Math.max(0.05, Math.min(1, 0.85 + (Math.random() * 2 - 1) * NOISE));
+
+      document.getElementById('brain-dot').className = 'status-dot active';
+      document.getElementById('brain-status').textContent = 'Transmitting';
+      drawWave(intensity);
+      addLog('BRAIN', `Step ${i+1} · Intent generated (intensity: ${intensity.toFixed(4)})`, 'tag-brain');
+      await sleep(3);
+
+      if (Math.random() < PACKET_LOSS) {
+        lost++;
+        document.getElementById('bridge-dot').className = 'status-dot error';
+        document.getElementById('bridge-status').textContent = 'Packet lost';
+        const cv = document.getElementById('checksum-val');
+        cv.textContent = 'Drop'; cv.className = 'val-red';
+        addLog('NETWORK', 'Packet lost in transmission — network congestion detected', 'tag-alert');
+        document.getElementById('brain-dot').className = 'status-dot';
+        document.getElementById('brain-status').textContent = 'Standby';
+        updateMetrics();
+        await sleep(9);
+        document.getElementById('bridge-dot').className = 'status-dot warn';
+        document.getElementById('bridge-status').textContent = 'Idle';
+        cv.textContent = 'Pending'; cv.className = 'val-green';
+        continue;
+      }
+
+      document.getElementById('bridge-dot').className = 'status-dot active';
+      document.getElementById('bridge-status').textContent = 'Processing';
+      addLog('BRIDGE', `Packet received from BRAIN_CORE · Token: ${AUTH_TOKEN}`, 'tag-bridge');
+      await sleep(2);
+
+      const clean = Math.round(intensity * 100) / 100;
+      document.getElementById('filter-val').textContent = `${intensity.toFixed(4)} → ${clean}`;
+      const cv = document.getElementById('checksum-val');
+      cv.textContent = 'Pass ✓'; cv.className = 'val-green';
+      addLog('BRIDGE', `Noise reduction applied · ${intensity.toFixed(4)} → ${clean}`, 'tag-bridge');
+
+      const deg = Math.round(clean * 180);
+      document.getElementById('transform-val').textContent = `→ ${deg}° cmd`;
+      addLog('BRIDGE', `Neural→Motor transform complete · command: ${deg}°`, 'tag-bridge');
+      await sleep(2);
+
+      recv++;
+      document.getElementById('arm-dot').className = 'status-dot purple';
+      document.getElementById('arm-status').textContent = 'Executing';
+      setArm(deg);
+      addLog('ARM', `Command executed · Moving prosthetic to ${deg}°`, 'tag-arm');
+      updateMetrics();
+      await sleep(7);
+
+      document.getElementById('arm-dot').className = 'status-dot';
+      document.getElementById('arm-status').textContent = 'Idle';
+      document.getElementById('brain-dot').className = 'status-dot';
+      document.getElementById('brain-status').textContent = 'Standby';
+      document.getElementById('bridge-dot').className = 'status-dot warn';
+      document.getElementById('bridge-status').textContent = 'Idle';
+    }
+
+    document.getElementById('prog').style.width = '100%';
+    document.getElementById('step-lbl').textContent = '10 / 10';
+    const rel = (recv / sent * 100).toFixed(2);
+    addLog('SYSTEM', `Simulation complete · Reliability: ${rel}% · Loss rate: ${(100 - parseFloat(rel)).toFixed(2)}%`, 'tag-system');
+    running = false;
+    document.getElementById('btn-run').disabled = false;
+    document.getElementById('btn-run').textContent = '▶ Run Again';
+  }
+
+  function resetSim() {
+    running = false;
+    sent = 0; recv = 0; lost = 0; logCount = 0;
+    updateMetrics();
+    document.getElementById('log').innerHTML = '';
+    document.getElementById('log-badge').textContent = '0 events';
+    document.getElementById('prog').style.width = '0%';
+    document.getElementById('step-lbl').textContent = '0 / 10';
+    document.getElementById('motor-deg').textContent = '—°';
+    document.getElementById('filter-val').textContent = '—';
+    document.getElementById('transform-val').textContent = '—';
+    const cv = document.getElementById('checksum-val');
+    cv.textContent = 'Pending'; cv.className = 'val-green';
+    document.getElementById('brain-status').textContent = 'Standby';
+    document.getElementById('bridge-status').textContent = 'Idle';
+    document.getElementById('arm-status').textContent = 'Waiting signal';
+    document.getElementById('brain-dot').className = 'status-dot';
+    document.getElementById('arm-dot').className = 'status-dot error';
+    document.getElementById('bridge-dot').className = 'status-dot warn';
+    document.getElementById('arm-arc').setAttribute('stroke-dashoffset', '283');
+    document.getElementById('arm-bar').style.width = '0%';
+    document.getElementById('brain-bar').style.width = '0%';
+    document.getElementById('brain-wave').innerHTML = '';
+    document.getElementById('m-rel').className = 'metric-num';
+    document.getElementById('m-rel').textContent = '—';
+    document.getElementById('btn-run').disabled = false;
+    document.getElementById('btn-run').textContent = '▶ Run Simulation';
+  }
+</script>
+
+</body>
+</html>
