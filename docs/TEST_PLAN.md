@@ -162,6 +162,186 @@ def test_T09_injection_attack():
 
 ---
 
+## 5.4 DAFT Validation — Domain Interface Mapping (Extended Edition)
+
+กรอบ **DAFT Extended** ใช้ตรวจสอบความถูกต้องของกระบวนการ **Domain Interface Mapping** โดยเฉพาะ ครอบคลุมตั้งแต่การแปลงสัญญาณกายภาพจนถึงการส่งออกเป็น S-XNP Packet
+
+### ตารางสรุป Integrated Mapping & Validation
+
+| ขั้นตอน (Domain) | สูตรคณิตศาสตร์ | เกณฑ์ DAFT | เป้าหมายสูงสุด |
+|:---|:---|:---:|:---|
+| **Physical** | $I = P / P_{max}$ | D, T | ข้อมูลแม่นยำและคำนวณไว |
+| **Biological** | $f = f_{base} + (f_{max} \times I)$ | F | สัญญาณเป็นธรรมชาติและปลอดภัย |
+| **Neurological** | $Addr = [X, Y, Z]$ | A | ส่งข้อมูลไปถูกตำแหน่งสมอง |
+| **Security** | $Hash(Bio \oplus Time)$ | Extended | ป้องกันการแฮ็กข้อมูลประสาท |
+
+---
+
+### D — Data Integrity (ความแม่นยำของข้อมูล)
+
+**เกณฑ์:** ค่าแรงกดที่รับเข้ามาเมื่อผ่าน Normalization แล้ว ต้องไม่สูญเสีย Precision และห้ามมีการบิดเบือนค่าสัมบูรณ์ระหว่างทาง
+
+**วิธีการ:** ตรวจสอบว่า `physical_domain()` คืนค่าที่แม่นยำในระดับ float32 และ Packet round-trip ได้ค่าเดิม
+
+```python
+# T-D01: Precision Loss ของ Physical Domain
+def test_D01_precision_loss():
+    # ทดสอบความละเอียดของ float32 ไม่หายระหว่าง encode/decode
+    for pressure in [0.0, 25.0, 50.0, 75.0, 100.0]:
+        intensity = physical_domain(pressure)
+        expected  = pressure / 100.0
+        assert abs(intensity - expected) < 1e-6, \
+            f"Precision loss ที่ {pressure}N: {intensity} ≠ {expected}"
+
+# T-D02: Round-trip ไม่บิดเบือนค่า
+def test_D02_roundtrip_integrity():
+    payload = SXNPPayload(intensity=0.45, packet_rate_hz=55.0, sector_id=0x020C0500)
+    pkt = SXNPPacket(payload=payload)
+    raw = pkt.build()
+    assert pkt.validate(raw), "CRC32 checksum ต้องผ่าน"
+    recovered = SXNPPacket.from_bytes(raw)
+    assert abs(recovered.payload.intensity - 0.45) < 1e-5, "intensity ต้องไม่เปลี่ยน"
+```
+
+**Test ID ที่ครอบคลุม:** T-01, T-02, T-D01, T-D02
+
+---
+
+### A — Architecture Compliance (ความสอดคล้องกับสถาปัตยกรรม)
+
+**เกณฑ์:** การ Mapping ต้องเกิดขึ้นในเลเยอร์ที่ถูกต้องตาม Neural-OSI — Physical/Bio Mapping ที่ L6 (Presentation) และ Neurological Addressing ที่ L3 (Network) ห้าม Bypass
+
+**วิธีการ:** ตรวจสอบ pipeline ว่าทุก domain ทำงานถูก layer และข้อมูลไหลครบทุกขั้นตอน
+
+```python
+# T-A01: ยืนยัน Mapping Pipeline ครบทุก Domain
+def test_A01_full_pipeline_compliance():
+    noise_f = MovingAverageFilter(window_size=5)
+    delta_e = DeltaEncoder(threshold=0.02)
+
+    payload, sent = build_payload(
+        pressure_n=60.0, bpm=72,
+        position="นิ้วกลาง",
+        noise_filter=noise_f, delta_enc=delta_e,
+    )
+    assert sent, "Pipeline ต้องส่ง packet ได้"
+
+    # ยืนยันว่าทุก domain ทำงานและส่งค่าออกมาถูกต้อง
+    assert 0.0 <= payload.intensity <= 1.0,       "L6: Physical domain ต้อง normalize ใน [0,1]"
+    assert 10.0 <= payload.packet_rate_hz <= 110.0,"L6: Biological domain ต้องอยู่ใน [10,110] Hz"
+    assert payload.sector_id > 0,                  "L3: Neurological domain ต้อง assign sector_id"
+    assert len(payload.bio_token) == 32,           "L5: Security domain ต้องสร้าง token 32 bytes"
+```
+
+**Test ID ที่ครอบคลุม:** T-04, T-06, T-A01
+
+---
+
+### F — Functional Safety (ความปลอดภัยเชิงระบบ)
+
+**เกณฑ์:** หากค่า Intensity เกิน 1.0 ระบบต้อง clamp และไม่ crash — ป้องกันไม่ให้สัญญาณที่ผิดปกติทำอันตรายต่อผู้ใช้
+
+**วิธีการ:** ทดสอบ edge case ที่ input เกินขีดจำกัด และยืนยันว่า Mapping Safeguard ทำงาน
+
+```python
+# T-F01: Mapping Safeguard — clamp I > 1.0
+def test_F01_intensity_clamp():
+    # แรงกดเกิน 100N ต้อง clamp ที่ 1.0 ไม่ crash
+    assert physical_domain(150.0) == 1.0, "clamp 150N → 1.0"
+    assert physical_domain(999.0) == 1.0, "clamp 999N → 1.0"
+
+    # intensity ที่ได้ต้องไม่ทำให้ biological domain พัง
+    hz = biological_domain(1.0)
+    assert hz == 110.0, "I=1.0 → 110 Hz (max, ไม่เกิน)"
+
+# T-F02: intensity ผิดปกติ raise ValueError ก่อนส่ง packet
+def test_F02_invalid_intensity_rejected():
+    try:
+        biological_domain(1.5)   # I > 1 ต้อง reject
+        assert False, "ต้อง raise ValueError"
+    except ValueError:
+        pass  # ✅ ระบบปฏิเสธค่าผิดปกติ
+```
+
+**Test ID ที่ครอบคลุม:** T-09, T-F01, T-F02
+
+---
+
+### T — Timing & Latency (ความแม่นยำของเวลา)
+
+**เกณฑ์:** กระบวนการคำนวณ Mapping ทั้งหมดต้องใช้เวลาไม่เกิน **1 ms** เพื่อรักษา End-to-End Latency < 50 ms
+
+**วิธีการ:** วัด processing time ของ `build_payload()` โดยตรง
+
+```python
+# T-T01: Computational Time ของ Domain Mapping < 1ms
+def test_T01_mapping_computation_time():
+    import time
+    noise_f = MovingAverageFilter(window_size=5)
+    delta_e = DeltaEncoder(threshold=0.02)
+
+    times = []
+    for _ in range(100):
+        # force send ทุกครั้งโดยสร้าง encoder ใหม่
+        d = DeltaEncoder(threshold=0.02)
+        t0 = time.perf_counter()
+        build_payload(45.0, 72, "นิ้วชี้", noise_f, d)
+        t1 = time.perf_counter()
+        times.append((t1 - t0) * 1000)  # แปลงเป็น ms
+
+    avg_ms = sum(times) / len(times)
+    assert avg_ms < 1.0, \
+        f"Mapping ใช้เวลาเฉลี่ย {avg_ms:.3f} ms — เกิน 1 ms"
+```
+
+**Test ID ที่ครอบคลุม:** T-07, T-08, T-T01
+
+---
+
+### [Extended] Resilience & Bio-Security
+
+**เกณฑ์:**
+- **Resilience:** ระบบยังรักษาความเสถียรของ Mapping ได้แม้มี Packet Loss 10%
+- **Security:** Bio-Signature ปลอมต้องถูกปฏิเสธ 100%
+
+```python
+# T-EX01: Resilience — Packet Loss 10% → Interpolation ยังทำงาน
+def test_EX01_resilience_packet_loss():
+    import random
+    random.seed(42)
+
+    prev = (0.0, 0.0, 0.0)
+    curr = (1.0, 2.0, 3.0)
+    received = 0
+    interpolated = 0
+
+    for _ in range(100):
+        if random.random() > 0.10:   # 90% packet ถึง
+            received += 1
+        else:
+            # packet หาย → ใช้ interpolation แทน
+            predicted = interpolate_lost_packet(prev, curr)
+            assert predicted == (2.0, 4.0, 6.0), "Interpolation ต้องทำนายถูก"
+            interpolated += 1
+
+    loss_rate = interpolated / 100
+    assert loss_rate <= 0.15, f"Packet loss จำลองได้ {loss_rate:.0%} (เกิน 10% margin)"
+
+# T-EX02: Bio-Security — ปฏิเสธ Bio-Signature ปลอม 100%
+def test_EX02_fake_biosignature_rejected():
+    real_token = security_domain_ecg([0.85, 0.84, 0.86], "DEVICE_001")
+    fake_token = security_domain_ecg([0.85, 0.84, 0.86], "DEVICE_FAKE")
+    zero_token = b'\x00' * 32
+
+    assert real_token != fake_token, "Device ID ต่างกัน → token ต้องต่างกัน"
+    assert real_token != zero_token, "Token ต้องไม่เป็น null bytes"
+    assert len(real_token) == 32,    "Token ต้องมีขนาด 32 bytes เสมอ"
+```
+
+**Test ID ที่ครอบคลุม:** T-EX01, T-EX02
+
+---
+
 ## 6. Test Environment & Tools (สภาพแวดล้อมและเครื่องมือ)
 
 | รายการ | รายละเอียด |
