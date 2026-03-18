@@ -272,6 +272,88 @@ test("Delta Encoding ลด Packet ได้",  transmissions < len(samples))
 
 
 # ════════════════════════════════════════════════
+# 13. DAFT Validation — Domain Interface Mapping
+# ════════════════════════════════════════════════
+section("13. DAFT Validation — Domain Interface Mapping (Extended Edition)")
+
+# ── D: Data Integrity ───────────────────────────
+# T-D01: Precision Loss ของ Physical Domain
+precision_ok = all(
+    abs(physical_domain(p) - p / 100.0) < 1e-6
+    for p in [0.0, 25.0, 50.0, 75.0, 100.0]
+)
+test("[D] T-D01 Precision: physical_domain ไม่สูญเสียค่า", precision_ok)
+
+# T-D02: Round-trip ไม่บิดเบือนค่า
+from protocol.sxnp_packet import SXNPPayload
+payload_d = SXNPPayload(intensity=0.45, packet_rate_hz=55.0, sector_id=0x020C0500)
+pkt_d     = SXNPPacket(payload=payload_d)
+raw_d     = pkt_d.build()
+recovered = SXNPPacket.from_bytes(raw_d)
+test("[D] T-D02 Round-trip: intensity ไม่บิดเบือน",
+     pkt_d.validate(raw_d) and abs(recovered.payload.intensity - 0.45) < 1e-5)
+
+# ── A: Architecture Compliance ──────────────────
+# T-A01: ยืนยัน Mapping Pipeline ครบทุก Domain
+noise_a = MovingAverageFilter(window_size=5)
+delta_a = DeltaEncoder(threshold=0.02)
+payload_a, sent_a = build_payload(60.0, 72, "นิ้วกลาง", noise_a, delta_a)
+test("[A] T-A01 Pipeline ส่ง packet ได้",         sent_a)
+test("[A] T-A01 L6: intensity ใน [0.0, 1.0]",     sent_a and 0.0 <= payload_a.intensity <= 1.0)
+test("[A] T-A01 L6: packet_rate_hz ใน [10, 110]", sent_a and 10.0 <= payload_a.packet_rate_hz <= 110.0)
+test("[A] T-A01 L3: sector_id > 0",               sent_a and payload_a.sector_id > 0)
+test("[A] T-A01 L5: bio_token 32 bytes",          sent_a and len(payload_a.bio_token) == 32)
+
+# ── F: Functional Safety ────────────────────────
+# T-F01: Mapping Safeguard — clamp I > 1.0
+test("[F] T-F01 clamp 150N → 1.0",  physical_domain(150.0) == 1.0)
+test("[F] T-F01 clamp 999N → 1.0",  physical_domain(999.0) == 1.0)
+test("[F] T-F01 I=1.0 → 110 Hz",    biological_domain(1.0) == 110.0)
+
+# T-F02: intensity ผิดปกติ raise ValueError
+try:
+    biological_domain(1.5)
+    test("[F] T-F02 I>1 ถูก reject", False)
+except ValueError:
+    test("[F] T-F02 I>1 ถูก reject", True)
+
+# ── T: Timing ───────────────────────────────────
+# T-T01: Computational Time < 1ms
+import time as _time
+_times = []
+for _ in range(100):
+    _d  = DeltaEncoder(threshold=0.02)
+    _nf = MovingAverageFilter(window_size=5)
+    _t0 = _time.perf_counter()
+    build_payload(45.0, 72, "นิ้วชี้", _nf, _d)
+    _times.append((_time.perf_counter() - _t0) * 1000)
+_avg_ms = sum(_times) / len(_times)
+test(f"[T] T-T01 Mapping time เฉลี่ย {_avg_ms:.3f} ms < 1 ms", _avg_ms < 1.0)
+
+# ── Extended: Resilience & Bio-Security ─────────
+# T-EX01: Packet Loss 10% → Interpolation ทำงาน
+import random as _random
+_random.seed(42)
+_prev, _curr = (0.0, 0.0, 0.0), (1.0, 2.0, 3.0)
+_lost = sum(1 for _ in range(100) if _random.random() < 0.10)
+_interp_ok = True
+for _ in range(_lost):
+    p = interpolate_lost_packet(_prev, _curr)
+    if p != (2.0, 4.0, 6.0):
+        _interp_ok = False
+        break
+test("[EX] T-EX01 Resilience: interpolation รับมือ packet loss ได้", _interp_ok)
+
+# T-EX02: Bio-Signature ปลอมถูกปฏิเสธ
+real_tok = security_domain_ecg([0.85, 0.84, 0.86], "DEVICE_001")
+fake_tok = security_domain_ecg([0.85, 0.84, 0.86], "DEVICE_FAKE")
+zero_tok = b'\x00' * 32
+test("[EX] T-EX02 Bio-Security: Device ต่างกัน → token ต่างกัน", real_tok != fake_tok)
+test("[EX] T-EX02 Bio-Security: token ไม่เป็น null bytes",        real_tok != zero_tok)
+test("[EX] T-EX02 Bio-Security: token ขนาด 32 bytes เสมอ",        len(real_tok) == 32)
+
+
+# ════════════════════════════════════════════════
 # สรุปผลการทดสอบ
 # ════════════════════════════════════════════════
 print(f"\n{'═'*50}")
