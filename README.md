@@ -24,27 +24,6 @@ S-XAN (Synaptic eXtended Augmentation Network) คือสถาปัตยก
                               └────────────────┘
 ```
 
----
-
-## โครงสร้างโปรเจกต์
-
-```
-s-xan-network/
-├── src/
-│   ├── protocol/
-│   │   └── sxnp_packet.py        # S-XNP Packet (Header + Payload)
-│   ├── domains/
-│   │   └── domain_mapping.py     # การแปลงค่าจากทุก Domain
-│   └── governance/
-│       ├── hitl_controller.py    # HITL Safety & Governance
-│       └── network_metrics.py    # วัดผลคุณภาพเครือข่าย
-├── tests/
-│   └── test_sxan.py              # Test Suite ครบ 52 กรณี
-├── docs/
-│   ├── ARCHITECTURE.md           # สถาปัตยกรรมระบบ
-│   └── ETHICS.md                 # จริยธรรมและกฎหมาย
-└── README.md
-```
 
 ---
 
@@ -278,5 +257,12 @@ print(ctrl.audit.export_summary())
 | นายปุณณวิชญ์ พงษ์สวโรจน์ | Tester/QA — Test Plan, Latency Benchmarks, Final Report |
 
 ---
+
+## Artifact
+
+Youtube    : https://youtube.com/shorts/hYt0ior1tyk
+NoteBookLM : https://notebooklm.google.com/notebook/7f335a4b-a9de-4c80-90be-4a26baf0ff8f
+Simulation : https://mammamiapizza.github.io/Synapse-X_network/
+
 
 *S-XAN Network v2.0 — กลุ่ม 18*
